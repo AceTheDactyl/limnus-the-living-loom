@@ -137,10 +137,13 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
   }, [connectionStatus, offlineQueue, currentConversationId, messages, sendMessageMutation, conversationsQuery, saveOfflineQueue]);
   
-  // Connection monitoring
+  // Enhanced connection monitoring for mobile and web
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    
     if (Platform.OS === 'web') {
       const handleOnline = () => {
+        console.log('Web: Connection restored');
         setConnectionStatus('online');
         // Process queue when connection is restored
         setTimeout(() => {
@@ -149,19 +152,65 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           }
         }, 1000);
       };
-      const handleOffline = () => setConnectionStatus('offline');
+      const handleOffline = () => {
+        console.log('Web: Connection lost');
+        setConnectionStatus('offline');
+      };
       
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
       
       setConnectionStatus(navigator.onLine ? 'online' : 'offline');
       
-      return () => {
+      unsubscribe = () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
       };
+    } else {
+      // Mobile network monitoring with NetInfo
+      import('@react-native-community/netinfo').then((NetInfoModule) => {
+        const NetInfo = NetInfoModule.default;
+        
+        // Get initial state
+        NetInfo.fetch().then(state => {
+          console.log('Mobile: Initial connection state:', state.isConnected, state.type);
+          setConnectionStatus(state.isConnected ? 'online' : 'offline');
+        });
+        
+        // Subscribe to network state changes
+        unsubscribe = NetInfo.addEventListener(state => {
+          console.log('Mobile: Network state changed:', {
+            isConnected: state.isConnected,
+            type: state.type,
+            isInternetReachable: state.isInternetReachable
+          });
+          
+          const wasOffline = connectionStatus === 'offline';
+          const isNowOnline = state.isConnected && state.isInternetReachable !== false;
+          
+          setConnectionStatus(isNowOnline ? 'online' : 'offline');
+          
+          // Process offline queue when connection is restored
+          if (wasOffline && isNowOnline && offlineQueue.length > 0) {
+            console.log('Mobile: Connection restored, processing offline queue');
+            setTimeout(() => {
+              processOfflineQueue();
+            }, 2000); // Longer delay for mobile to ensure stable connection
+          }
+        });
+      }).catch((error) => {
+        console.warn('NetInfo not available:', error);
+        // Fallback to assuming online
+        setConnectionStatus('online');
+      });
     }
-  }, [offlineQueue.length, processOfflineQueue]);
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [connectionStatus, offlineQueue.length, processOfflineQueue]);
   
   // Load offline queue on mount
   useEffect(() => {

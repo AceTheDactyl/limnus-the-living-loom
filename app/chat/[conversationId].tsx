@@ -782,6 +782,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f23',
+    // Mobile-specific optimizations
+    ...(Platform.OS !== 'web' && {
+      // Prevent iOS bounce effect
+      overScrollMode: 'never',
+    }),
   },
   header: {
     flexDirection: 'row',
