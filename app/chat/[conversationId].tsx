@@ -23,7 +23,7 @@ import Colors, { quickPrompts } from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const { width } = Dimensions.get('window');
 
@@ -92,44 +92,7 @@ const usePerformanceMonitor = () => {
   return metrics;
 };
 
-// Connection status hook
-const useConnectionStatus = () => {
-  const [isConnected, setIsConnected] = useState(true);
-  
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      // For web, use navigator.onLine
-      const handleOnline = () => setIsConnected(true);
-      const handleOffline = () => setIsConnected(false);
-      
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      
-      // Set initial state
-      setIsConnected(navigator.onLine);
-      
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
-    } else {
-      // For React Native, use NetInfo
-      import('@react-native-community/netinfo').then((NetInfo) => {
-        const unsubscribe = NetInfo.default.addEventListener(state => {
-          setIsConnected(state.isConnected ?? false);
-        });
-        
-        return unsubscribe;
-      }).catch(() => {
-        // Fallback if NetInfo is not available
-        console.log('NetInfo not available, assuming connected');
-        setIsConnected(true);
-      });
-    }
-  }, []);
-  
-  return isConnected;
-};
+
 
 // Cross-platform swipe gesture hook
 const useSwipeGesture = (onSwipeLeft?: () => void, onSwipeRight?: () => void) => {
@@ -207,20 +170,21 @@ export default function ChatScreen() {
     currentConversationId,
     selectConversation,
     streamingMessage,
-    isStreaming
+    isStreaming,
+    connectionStatus,
+    hasOfflineMessages,
+    processOfflineQueue
   } = useChat();
   
   const [inputText, setInputText] = useState('');
-  const [offlineQueue, setOfflineQueue] = useState<Message[]>([]);
   const [showPerformanceMetrics, setShowPerformanceMetrics] = useState(__DEV__);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   
 
   
-  // Performance and connection monitoring
+  // Performance monitoring
   const metrics = usePerformanceMonitor();
-  const isConnected = useConnectionStatus();
 
   useEffect(() => {
     if (conversationId && conversationId !== 'new' && conversationId !== currentConversationId) {
@@ -237,56 +201,7 @@ export default function ChatScreen() {
     }
   }, [messages, streamingMessage]);
 
-  // Offline message storage
-  const saveOfflineMessage = useCallback(async (message: Message) => {
-    try {
-      const stored = await AsyncStorage.getItem('offlineMessages');
-      const offlineMessages = stored ? JSON.parse(stored) : [];
-      offlineMessages.push(message);
-      await AsyncStorage.setItem('offlineMessages', JSON.stringify(offlineMessages));
-      setOfflineQueue(offlineMessages);
-    } catch (error) {
-      console.error('Failed to save offline message:', error);
-    }
-  }, []);
-  
-  const processOfflineQueue = useCallback(async () => {
-    if (!isConnected || offlineQueue.length === 0) return;
-    
-    try {
-      for (const message of offlineQueue) {
-        await sendMessage(message.content);
-      }
-      
-      // Clear offline queue
-      await AsyncStorage.removeItem('offlineMessages');
-      setOfflineQueue([]);
-    } catch (error) {
-      console.error('Failed to process offline queue:', error);
-    }
-  }, [isConnected, offlineQueue, sendMessage]);
-  
-  // Process offline messages when connection is restored
-  useEffect(() => {
-    if (isConnected) {
-      processOfflineQueue();
-    }
-  }, [isConnected, processOfflineQueue]);
-  
-  // Load offline messages on mount
-  useEffect(() => {
-    const loadOfflineMessages = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('offlineMessages');
-        if (stored) {
-          setOfflineQueue(JSON.parse(stored));
-        }
-      } catch (error) {
-        console.error('Failed to load offline messages:', error);
-      }
-    };
-    loadOfflineMessages();
-  }, []);
+
 
   const handleSend = useCallback(async () => {
     if (!inputText.trim() || isSending) return;
@@ -299,35 +214,20 @@ export default function ChatScreen() {
     const messageToSend = inputText.trim();
     setInputText('');
     
-    const userMessage: Message = {
-      role: 'user',
-      content: messageToSend,
-      timestamp: Date.now(),
-    };
-    
     try {
-      if (!isConnected) {
-        // Save message for later when offline
-        await saveOfflineMessage(userMessage);
-        Alert.alert('Offline', 'Message saved. It will be sent when connection is restored.');
-        return;
-      }
-      
       await sendMessage(messageToSend);
     } catch (error) {
       console.error('Failed to send message:', error);
       
-      // Save message offline if send fails
-      await saveOfflineMessage(userMessage);
-      
-      Alert.alert('Error', 'Failed to send message. It has been saved and will be sent when connection is restored.');
+      // Show user-friendly error message
+      Alert.alert('Message Status', (error as Error).message);
       
       // Error haptic feedback
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     }
-  }, [inputText, isSending, isConnected, saveOfflineMessage, sendMessage]);
+  }, [inputText, isSending, sendMessage]);
   
   // Web keyboard shortcuts
   useEffect(() => {
@@ -628,25 +528,7 @@ export default function ChatScreen() {
     );
   };
 
-  // Connection status component
-  const ConnectionStatus = () => (
-    <View style={[
-      styles.connectionStatus,
-      { backgroundColor: isConnected ? Colors.light.success + '20' : Colors.light.notification + '20' }
-    ]}>
-      {isConnected ? (
-        <>
-          <Wifi size={12} color={Colors.light.success} />
-          <Text style={[styles.connectionText, { color: Colors.light.success }]}>Connected</Text>
-        </>
-      ) : (
-        <>
-          <WifiOff size={12} color={Colors.light.notification} />
-          <Text style={[styles.connectionText, { color: Colors.light.notification }]}>Offline</Text>
-        </>
-      )}
-    </View>
-  );
+
   
   // Performance metrics component
   const PerformanceMetrics = () => {
@@ -693,19 +575,58 @@ export default function ChatScreen() {
           isDesktop && styles.mainContentDesktop,
           isTablet && styles.mainContentTablet
         ]}>
-        {/* Connection Status */}
-        <ConnectionStatus />
+
         
         {/* Performance Metrics */}
         <PerformanceMetrics />
         
+        {/* Enhanced Connection Status */}
+        <View style={[
+          styles.connectionStatus,
+          { 
+            backgroundColor: connectionStatus === 'online' ? Colors.light.success + '20' : 
+                           connectionStatus === 'reconnecting' ? Colors.light.warning + '20' :
+                           Colors.light.notification + '20' 
+          }
+        ]}>
+          {connectionStatus === 'online' ? (
+            <>
+              <Wifi size={12} color={Colors.light.success} />
+              <Text style={[styles.connectionText, { color: Colors.light.success }]}>Connected</Text>
+            </>
+          ) : connectionStatus === 'reconnecting' ? (
+            <>
+              <RefreshCw size={12} color={Colors.light.warning} />
+              <Text style={[styles.connectionText, { color: Colors.light.warning }]}>Reconnecting...</Text>
+            </>
+          ) : (
+            <>
+              <WifiOff size={12} color={Colors.light.notification} />
+              <Text style={[styles.connectionText, { color: Colors.light.notification }]}>Offline</Text>
+            </>
+          )}
+        </View>
+        
         {/* Offline Queue Indicator */}
-        {offlineQueue.length > 0 && (
-          <View style={styles.offlineQueueIndicator}>
+        {hasOfflineMessages && (
+          <TouchableOpacity 
+            style={styles.offlineQueueIndicator}
+            onPress={() => {
+              Alert.alert(
+                'Offline Messages', 
+                'You have messages waiting to be sent. They will be sent automatically when connection is restored.',
+                [
+                  { text: 'OK', style: 'default' },
+                  { text: 'Retry Now', onPress: processOfflineQueue, style: 'default' }
+                ]
+              );
+            }}
+          >
+            <RefreshCw size={14} color="#FFC107" />
             <Text style={styles.offlineQueueText}>
-              {offlineQueue.length} message{offlineQueue.length > 1 ? 's' : ''} queued for sending
+              Messages queued for sending - Tap to retry
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
         
           {/* Header */}
@@ -830,11 +751,11 @@ export default function ChatScreen() {
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
-                    isSending && styles.sendButtonDisabled,
+                    (isSending || connectionStatus === 'reconnecting') && styles.sendButtonDisabled,
                     isDesktop && styles.sendButtonDesktop
                   ]}
                   onPress={handleSend}
-                  disabled={isSending}
+                  disabled={isSending || connectionStatus === 'reconnecting'}
                 >
                   <Send 
                     size={20} 
@@ -1189,6 +1110,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold' as const,
   },
   offlineQueueIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(255, 193, 7, 0.2)',
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -1200,6 +1124,7 @@ const styles = StyleSheet.create({
     color: '#FFC107',
     textAlign: 'center',
     fontWeight: '500' as const,
+    marginLeft: 8,
   },
   
   // Desktop and responsive styles
