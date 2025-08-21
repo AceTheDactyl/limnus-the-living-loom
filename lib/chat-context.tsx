@@ -137,34 +137,70 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     }
   }, [connectionStatus, offlineQueue, currentConversationId, messages, sendMessageMutation, conversationsQuery, saveOfflineQueue]);
   
-  // Enhanced connection monitoring for mobile and web
+  // Enhanced connection monitoring for mobile and web with better error handling
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let reconnectTimeout: NodeJS.Timeout | undefined;
     
     if (Platform.OS === 'web') {
       const handleOnline = () => {
         console.log('Web: Connection restored');
         setConnectionStatus('online');
-        // Process queue when connection is restored
-        setTimeout(() => {
+        // Process queue when connection is restored with debounce
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        reconnectTimeout = setTimeout(() => {
           if (offlineQueue.length > 0) {
             processOfflineQueue();
           }
         }, 1000);
       };
+      
       const handleOffline = () => {
         console.log('Web: Connection lost');
         setConnectionStatus('offline');
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
       };
+      
+      // Enhanced connection detection for web
+      const checkConnection = async () => {
+        try {
+          // Try to fetch a small resource to verify actual connectivity
+          const response = await fetch('/favicon.ico', { 
+            method: 'HEAD',
+            cache: 'no-cache',
+            signal: AbortSignal.timeout(5000)
+          });
+          return response.ok;
+        } catch {
+          return false;
+        }
+      };
+      
+      // Initial connection check
+      checkConnection().then(isOnline => {
+        setConnectionStatus(isOnline ? 'online' : 'offline');
+      });
       
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
       
-      setConnectionStatus(navigator.onLine ? 'online' : 'offline');
+      // Periodic connection health check
+      const healthCheck = setInterval(async () => {
+        if (navigator.onLine) {
+          const isActuallyOnline = await checkConnection();
+          if (!isActuallyOnline && connectionStatus === 'online') {
+            setConnectionStatus('offline');
+          } else if (isActuallyOnline && connectionStatus === 'offline') {
+            setConnectionStatus('online');
+          }
+        }
+      }, 30000); // Check every 30 seconds
       
       unsubscribe = () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
+        clearInterval(healthCheck);
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
       };
     } else {
       // Mobile network monitoring with NetInfo
@@ -193,7 +229,8 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           // Process offline queue when connection is restored
           if (wasOffline && isNowOnline && offlineQueue.length > 0) {
             console.log('Mobile: Connection restored, processing offline queue');
-            setTimeout(() => {
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(() => {
               processOfflineQueue();
             }, 2000); // Longer delay for mobile to ensure stable connection
           }
@@ -208,6 +245,9 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     return () => {
       if (unsubscribe) {
         unsubscribe();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
       }
     };
   }, [connectionStatus, offlineQueue.length, processOfflineQueue]);

@@ -3,19 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
   Dimensions,
   Alert,
   Animated,
   PanResponder,
-  StatusBar,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Send, Copy, RotateCcw, Mic, Paperclip, Sparkles, Zap, BookOpen, BarChart3, Wifi, WifiOff, Activity, User, RefreshCw } from 'lucide-react-native';
 import { useChat, Message } from '@/lib/chat-context';
@@ -564,12 +562,7 @@ export default function ChatScreen() {
       styles.container,
       isDesktop && styles.containerDesktop
     ]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f23" />
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
+      <View style={styles.container}>
         <View style={[
           styles.mainContent,
           isDesktop && styles.mainContentDesktop,
@@ -773,7 +766,7 @@ export default function ChatScreen() {
             </View>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

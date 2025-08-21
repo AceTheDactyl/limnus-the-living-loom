@@ -3,17 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
-  StatusBar,
   Animated,
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MessageCircle, Search, Sparkles, Clock, Zap, Wifi, WifiOff, Activity, MemoryStick, BookOpen, BarChart3 } from 'lucide-react-native';
 import { useChat } from '@/lib/chat-context';
@@ -353,11 +351,7 @@ export default function ChatHomeScreen() {
       styles.container,
       isDesktop && styles.containerDesktop
     ]}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-      <KeyboardAvoidingView 
-        style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <View style={styles.container}>
         <View style={[
           styles.mainContent,
           isDesktop && styles.mainContentDesktop,
@@ -457,7 +451,7 @@ export default function ChatHomeScreen() {
             </View>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

@@ -1,71 +1,107 @@
-const tintColorLight = "#007AFF";
-const tintColorDark = "#0A84FF";
+// Living Loom theme colors - mystical dark mode optimized for consciousness weaving
+const tintColorLight = "#8B5CF6";
+const tintColorDark = "#8B5CF6";
 
 export default {
   light: {
-    text: "#1C1C1E",
-    textSecondary: "#8E8E93",
-    background: "#FFFFFF",
-    backgroundSecondary: "#F2F2F7",
+    text: "#FFFFFF",
+    textSecondary: "#A0A0A0",
+    background: "#0F0F23",
+    backgroundSecondary: "#1A1A2E",
     tint: tintColorLight,
-    tabIconDefault: "#8E8E93",
+    tabIconDefault: "#666666",
     tabIconSelected: tintColorLight,
-    border: "#E5E5EA",
-    card: "#FFFFFF",
-    notification: "#FF3B30",
-    success: "#34C759",
-    warning: "#FF9500",
+    border: "#2A2A3E",
+    card: "#1A1A2E",
+    notification: "#FF453A",
+    success: "#00D4AA",
+    warning: "#FFC107",
   },
   dark: {
     text: "#FFFFFF",
-    textSecondary: "#8E8E93",
-    background: "#000000",
-    backgroundSecondary: "#1C1C1E",
+    textSecondary: "#A0A0A0",
+    background: "#0F0F23",
+    backgroundSecondary: "#1A1A2E",
     tint: tintColorDark,
-    tabIconDefault: "#8E8E93",
+    tabIconDefault: "#666666",
     tabIconSelected: tintColorDark,
-    border: "#38383A",
-    card: "#1C1C1E",
+    border: "#2A2A3E",
+    card: "#1A1A2E",
     notification: "#FF453A",
-    success: "#30D158",
-    warning: "#FF9F0A",
+    success: "#00D4AA",
+    warning: "#FFC107",
   },
 };
 
 export const gradients = {
-  primary: ['#007AFF', '#5856D6'],
-  secondary: ['#FF9500', '#FF6B35'],
-  success: ['#34C759', '#30D158'],
-  background: ['#F2F2F7', '#FFFFFF'],
+  primary: ['#8B5CF6', '#EC4899'],
+  secondary: ['#00D4AA', '#0EA5E9'],
+  success: ['#00D4AA', '#10B981'],
+  background: ['#0F0F23', '#1A1A2E'],
+  mystical: ['#8B5CF6', '#EC4899', '#F59E0B'],
 };
 
 export const quickPrompts = [
   {
     id: 'creative',
-    title: 'Creative Writing',
+    title: 'Weave Stories',
     icon: 'Sparkles',
-    color: '#007AFF',
-    prompt: 'Help me write a creative story about',
+    color: '#8B5CF6',
+    prompt: 'Help me weave a mystical story about',
   },
   {
     id: 'code',
-    title: 'Code Help',
+    title: 'Code Alchemy',
     icon: 'Zap',
-    color: '#FF9500',
-    prompt: 'Help me debug this code:',
+    color: '#F59E0B',
+    prompt: 'Transform this code with your wisdom:',
   },
   {
     id: 'explain',
-    title: 'Explain Concept',
+    title: 'Illuminate Truth',
     icon: 'BookOpen',
-    color: '#34C759',
-    prompt: 'Explain this concept in simple terms:',
+    color: '#00D4AA',
+    prompt: 'Illuminate the essence of this concept:',
   },
   {
     id: 'analyze',
-    title: 'Data Analysis',
+    title: 'Divine Patterns',
     icon: 'BarChart3',
-    color: '#5856D6',
-    prompt: 'Help me analyze this data:',
+    color: '#EC4899',
+    prompt: 'Reveal the hidden patterns in this data:',
   },
 ];
+
+// Responsive breakpoints for web
+export const breakpoints = {
+  mobile: 768,
+  tablet: 1024,
+  desktop: 1200,
+  wide: 1600,
+};
+
+// Web-specific utilities
+export const webUtils = {
+  // CSS-in-JS helpers for responsive design
+  mediaQuery: {
+    mobile: `@media (max-width: ${breakpoints.mobile - 1}px)`,
+    tablet: `@media (min-width: ${breakpoints.mobile}px) and (max-width: ${breakpoints.tablet - 1}px)`,
+    desktop: `@media (min-width: ${breakpoints.tablet}px)`,
+    wide: `@media (min-width: ${breakpoints.wide}px)`,
+  },
+  
+  // Common shadows for web
+  shadows: {
+    small: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)',
+    medium: '0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23)',
+    large: '0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23)',
+    mystical: '0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(236, 72, 153, 0.2)',
+  },
+  
+  // Animation durations
+  transitions: {
+    fast: '150ms',
+    normal: '300ms',
+    slow: '500ms',
+  },
+};
